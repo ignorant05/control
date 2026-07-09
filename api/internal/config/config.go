@@ -44,7 +44,7 @@ func Load() (*Config, error) {
 		WriteTimeout: parseDuration("SERVER_WRITE_TIMEOUT", "15s"),
 		IdleTimeout:  parseDuration("SERVER_IDLE_TIMEOUT", "60s"),
 
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/control?sslmode=disable"),
+		DatabaseURL: getEnv("POSTGRES_URL", "control://control:postgres@localhost:5432/control?sslmode=disable"),
 
 		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
