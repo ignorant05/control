@@ -7,9 +7,9 @@
 *.dll
 *.so
 *.dylib
-./app
-./tui/app 
-./api/app
+app
+tui/app
+api/app
 
 # Test binary, built with `go test -c`
 *.test
@@ -34,3 +34,6 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# Helm 
+*.tgz           
+Charts/
