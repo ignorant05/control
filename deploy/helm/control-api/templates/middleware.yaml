@@ -1,0 +1,17 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "control-api.fullname" . }}-ws-timeout
+spec:
+  headers:
+    customResponseHeaders: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ include "control-api.fullname" . }}-transport
+spec:
+  forwardingTimeouts:
+    dialTimeout: 5s
+    responseHeaderTimeout: 10s
+    idleConnTimeout: {{ .Values.ingress.wsIdleTimeout }}

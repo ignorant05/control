@@ -1,0 +1,60 @@
+api:
+  image:
+    repository: registry.local/control-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8080
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  env:
+    port: "8080"
+    readTimeout: "10s"
+    writeTimeout: "10s"
+    idleTimeout: "120s"
+    jwtExpiry: "24h"
+
+ingress:
+  enabled: true
+  host: control.local # override per environment (dev/prod)
+  entryPoint: web # "web" for k3s dev (plain HTTP); switch to "websecure" once TLS is set up
+  wsIdleTimeout: "120s"
+
+# local dev subcharts (k3s / minikube)
+postgresql:
+  enabled: true
+  auth:
+    username: control
+    database: control
+    existingSecret: control-postgres-secret
+    secretKeys:
+      userPasswordKey: password
+  primary:
+    persistence:
+      size: 1Gi
+
+redis:
+  enabled: true
+  auth:
+    existingSecret: control-redis-secret
+    existingSecretPasswordKey: password
+  master:
+    persistence:
+      size: 512Mi
+  architecture: standalone
+
+# external managed services with AWS (staging/prod)
+external:
+  postgresURL: "" # set + flip postgresql.enabled=false to use e.g. RDS
+  redisAddr: "" # set + flip redis.enabled=false to use e.g. ElastiCache
+
+service:
+  type: ClusterIP
+  nodePort: 30080

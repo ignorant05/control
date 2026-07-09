@@ -1,0 +1,16 @@
+apiVersion: v2
+name: control-api
+description: Feature flag control API, with optional Postgres/Redis subcharts for local dev
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  - name: postgresql
+    version: "latest"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "latest"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
