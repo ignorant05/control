@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "control-api.fullname" . }}-app
+  labels:
+    {{- include "control-api.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  JWT_SECRET: {{ required "set --set api.jwtSecret=... at install time" .Values.api.jwtSecret | quote }}
+  {{- if not .Values.postgresql.enabled }}
+  POSTGRES_URL: {{ required "set external.postgresURL when postgresql.enabled=false" .Values.external.postgresURL | quote }}
+  {{- end }}
+  {{- if not .Values.redis.enabled }}
+  REDIS_ADDR: {{ required "set external.redisAddr when redis.enabled=false" .Values.external.redisAddr | quote }}
+  {{- end }}
