@@ -24,8 +24,10 @@ api:
 ingress:
   enabled: true
   host: control.local # override per environment (dev/prod)
-  entryPoint: web # "web" for k3s dev (plain HTTP); switch to "websecure" once TLS is set up
+  entryPoint: websecure
   wsIdleTimeout: "120s"
+  tls:
+    secretName: control-api-tls
 
 # local dev subcharts (k3s / minikube)
 postgresql:
@@ -58,3 +60,34 @@ external:
 service:
   type: ClusterIP
   nodePort: 30080
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  storageSize: "5Gi"
+  retentionDays: 14
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300 # wait 5min before scaling down
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max

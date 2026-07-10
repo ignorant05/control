@@ -12,3 +12,5 @@ spec:
         - name: {{ include "control-api.fullname" . }}
           port: 80
           serversTransport: {{ include "control-api.fullname" . }}-transport
+  tls:
+    secretName: {{ .Values.ingress.tls.secretName }}
