@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GO_VERSION: "1.26.4"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.work.sum
+            api/go.sum
+            tui/go.sum
+            shared/go.sum
+
+      - name: build
+        run: go build -v ./api/... ./tui/... ./shared/...
+
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [api, tui, shared]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: lint (${{ matrix.module }})
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          working-directory: ${{ matrix.module }}
+
+  notify:
+    needs: [build, lint]
+    if: always()
+    uses: ./.github/workflows/notify-discord.yml
+    with:
+      status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+      pipeline: "ci"
+    secrets: inherit
