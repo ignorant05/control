@@ -1,0 +1,45 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "control-api.fullname" . }}-backup
+  labels:
+    {{- include "control-api.labels" . | nindent 4 }}
+spec:
+  schedule: "{{ .Values.backup.schedule }}"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: bitnami/postgresql:16
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgresql.auth.existingSecret }}
+                      key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  FILE="/backups/control-$(date +%Y%m%d-%H%M%S).sql.gz"
+                  pg_dump -h {{ .Release.Name }}-postgresql -U {{ .Values.postgresql.auth.username }} {{ .Values.postgresql.auth.database }} \
+                    | gzip > "$FILE"
+                  {{- if .Values.backup.retentionDays }}
+                  find /backups -name '*.sql.gz' -mtime +{{ .Values.backup.retentionDays }} -delete
+                  {{- end }}
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: {{ include "control-api.fullname" . }}-backups
+          restartPolicy: OnFailure
+{{- end }}
