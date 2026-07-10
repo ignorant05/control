@@ -1,0 +1,38 @@
+name: notify-discord
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        required: true
+        type: string
+      pipeline:
+        required: true
+        type: string
+    secrets:
+      DISCORD_WEBHOOK_URL:
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord Notify
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          STATUS: ${{ inputs.status }}
+        run: |
+          COLOR=$([[ "$STATUS" == "success" ]] && echo "3066993" || echo "15158332")
+          curl -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "'"${{ inputs.pipeline }}"' — '"$STATUS"'",
+                "color": '"$COLOR"',
+                "fields": [
+                  { "name": "Repo", "value": "${{ github.repository }}", "inline": true },
+                  { "name": "Branch", "value": "${{ github.ref_name }}", "inline": true },
+                  { "name": "Commit", "value": "${{ github.sha }}", "inline": false }
+                ]
+              }]
+            }'

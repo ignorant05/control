@@ -136,6 +136,10 @@ func (h *Hub) Run(ctx context.Context) {
 }
 
 func (h *Hub) broadcastToProject(ctx context.Context, msg *model.WSMessage) {
+	if h.redis != nil {
+		h.redis.Publish(ctx, "ws:broadcast", msg)
+	}
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return
@@ -152,9 +156,6 @@ func (h *Hub) broadcastToProject(ctx context.Context, msg *model.WSMessage) {
 		default:
 			fmt.Printf("[HUB] client %s send buffer full, dropped\n", client.ID)
 		}
-	}
-	if h.redis != nil {
-		h.redis.Publish(ctx, "ws:broadcast", msg)
 	}
 }
 
