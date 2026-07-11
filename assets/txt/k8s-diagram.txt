@@ -1,0 +1,77 @@
+Clients {
+  Web Client [icon: web]
+  Laptop Client [icon: laptop]
+  TUI Client [icon: terminal, label: "TUI Client\n(ghcr.io/control-tui or native binary)"]
+}
+
+CI/CD [label: "GitHub Actions"] {
+  CI API [icon: github-actions, label: "api-image.yml\nbuild + push"]
+  GHCR [icon: github, label: "ghcr.io/control-api\n(sha- + branch tags)"]
+  CD Job [icon: github-actions, label: "cd.yml\ntriggered by CI API success only\n-> helm upgrade"]
+}
+
+Namespace [label: "K8s Namespace: feature-flags (k3s / minikube dev; EKS uses RDS/ElastiCache instead of the pods below)"] {
+
+  IngressRoute [icon: kubernetes, label: "Traefik IngressRoute\nentryPoint: websecure, WS idle-timeout via ServersTransport"]
+  TLS Secret [icon: kubernetes, label: "K8s Secret: control-api-tls\n(self-signed for local dev / cert-manager+Let's Encrypt once a real domain exists)"]
+
+  Config Env [icon: kubernetes, label: "ConfigMap\n(PORT, READ/WRITE/IDLE_TIMEOUT, JWT_EXPIRY)"]
+  JWT Secret [icon: kubernetes, label: "K8s Secret\n(JWT_SECRET)"]
+
+  App Service [icon: kubernetes, label: "control-api Service\n(ClusterIP)"]
+
+  HPA [icon: kubernetes, label: "HorizontalPodAutoscaler\nmin:2 max:10, CPU 70% / Mem 80%"]
+
+  App Deployment [icon: kubernetes, label: "control-api Deployment\n(ghcr.io/control-api, replicas: 2-10)"] {
+    App Pod A [icon: container, label: "API Pod A"]
+    App Pod B [icon: container, label: "API Pod B"]
+  }
+
+  Backup CronJob [icon: kubernetes, label: "CronJob: control-api-backup\nschedule 0 2 * * *, pg_dump -> gzip, retention 14d"]
+  Backup PVC [icon: kubernetes, label: "PersistentVolumeClaim\n(control-api-backups)"]
+
+  Data Subnet [label: "Stateful Storage Tier (local dev only)"] {
+    Postgres Service [icon: kubernetes, label: "postgresql Service\n(ClusterIP)"]
+    Postgres Pod [icon: database, label: "PostgreSQL\n(StatefulSet)"]
+    Postgres Secret [icon: kubernetes, label: "K8s Secret\n(Postgres credentials)"]
+    Postgres PVC [icon: kubernetes, label: "PersistentVolumeClaim"]
+
+    Redis Service [icon: kubernetes, label: "redis-master Service\n(ClusterIP)"]
+    Redis Pod [icon: database, label: "Redis\n(Cache + Pub/Sub fanout)"]
+    Redis Secret [icon: kubernetes, label: "K8s Secret\n(Redis password)"]
+    Redis PVC [icon: kubernetes, label: "PersistentVolumeClaim"]
+  }
+}
+
+CI API -> GHCR [label: "push image"]
+GHCR -> CD Job [label: "success triggers workflow_run"]
+CD Job -> App Deployment [label: "helm upgrade --set image.tag=sha-..."]
+
+Config Env -> App Deployment [label: "envFrom ConfigMap"]
+JWT Secret -> App Deployment [label: "JWT_SECRET"]
+Postgres Secret -> App Deployment [label: "POSTGRES_PASSWORD (compose POSTGRES_URL)"]
+Redis Secret -> App Deployment [label: "REDIS_PASSWORD"]
+Postgres Secret -> Postgres Pod [label: "auth"]
+Redis Secret -> Redis Pod [label: "auth"]
+TLS Secret -> IngressRoute [label: "Provides TLS"]
+
+HPA -> App Deployment [label: "scales replicas on CPU/Mem"]
+
+Clients -> IngressRoute [label: "REST /api/v1/* + WS /ws (wss)"]
+IngressRoute -> App Service [label: "Routes Traffic"]
+App Service -> App Pod A
+App Service -> App Pod B
+
+App Pod A -> Redis Service [label: "1. Flag cache\n2. WS broadcast pub/sub"]
+App Pod B -> Redis Service [label: "1. Flag cache\n2. WS broadcast pub/sub"]
+Redis Service -> Redis Pod
+Redis Pod -> Redis PVC [label: "AOF/RDB persistence"]
+
+App Pod A -> Postgres Service [label: "3. Mutate flag config"]
+App Pod B -> Postgres Service [label: "3. Mutate flag config"]
+Postgres Service -> Postgres Pod
+Postgres Pod -> Postgres PVC [label: "Commit data to disk"]
+
+Backup CronJob -> Postgres Service [label: "nightly pg_dump"]
+Postgres Secret -> Backup CronJob [label: "PGPASSWORD"]
+Backup CronJob -> Backup PVC [label: "write .sql.gz, prune >14d"]
