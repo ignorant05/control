@@ -1,0 +1,96 @@
+Clients {
+  Web Client [icon: web]
+  Laptop Client [icon: laptop]
+  PC Client [icon: desktop]
+}
+
+Registry {
+  Container Registry [icon: aws-ecr, label: "ECR\n(mirrored from ghcr.io/control-api)"]
+}
+
+Edge Layer {
+  DNS [icon: aws-route-53]
+  WAF [icon: aws-waf, label: "WAF\n(rate-limit login + AWS Managed Core Rule Set — pre-auth abuse filtering only, not user access control)"]
+}
+
+VPC [icon: aws-vpc] {
+  IGW [icon: aws-internet-gateway]
+  ECR Endpoint [icon: aws-endpoints, label: "VPC Endpoints (ECR API & DKR)"]
+  S3 Gateway Endpoint [icon: aws-endpoints, label: "S3 Gateway Endpoint"]
+  Public Subnets Tier [icon: aws-public-subnet, label: "DMZ"] {
+      LoadBalancer [icon: aws-alb]
+      NAT Gateway [icon: aws-nat-gateway]
+  }
+
+  Private Subnets Tier [icon: aws-private-subnet, label: "Application"] {
+    K8S Service [icon: aws-eks] {
+      Application Container [icon: container]
+    }
+  }
+
+  Data Subnets Tier [icon: aws-private-subnet, label: "Isolated Data Subnet"] {
+    Databases [icon: database]{
+      Cache [icon: aws-elasticache, label: "ElastiCache Redis\n(managed — not a pod)"]
+      SQL DB [icon: aws-rds, label: "RDS PostgreSQL\n(managed — not a pod)"]
+    }
+  }
+}
+
+IAM Group [color: amber, label: IAM] {
+  EKS Cluster Role [label: "EKS Cluster Role\n(AmazonEKSClusterPolicy)", icon: aws-iam-role]
+  Node Group Role [label: "Node Group Role\n(Worker, CNI, ECR ReadOnly)", icon: aws-iam-role]
+  Go App Pod Role [label: "App Pod Role\n(scoped to app's own needs — DB/cache creds via K8s Secret, not AWS secret store)", icon: aws-iam-role]
+  GHA Role [label: "GitHub Actions OIDC Role\n(ECR Push & Helm Deploy)", icon: aws-iam-role]
+  Auth Service [icon: aws-iam-role, label: "Go AuthService\n(JWT, in-app — no external IdP)"]
+}
+
+Policies {
+  Node Policy [icon: policy]
+  EKS Policy [icon: policy]
+  CNI Policy [icon: policy]
+  ECR Policy [icon: policy]
+}
+
+GitHub [icon: github, color: gray]{
+  CI API [icon: github-actions, label: "api-image.yml\n-> ghcr.io/control-api, mirror -> ecr"]
+  CI TUI [icon: github-actions, label: "tui-image.yml + goreleaser\n-> ghcr.io/control-tui + GitHub Releases\n(standalone, never deploys)"]
+  CD [icon: github-actions, label: "cd.yml\ntriggered only by api-image success\n-> helm upgrade on eks"]
+  Notify [icon: github-actions, label: "notify-discord.yml\n-> maintainer Discord channel"]
+}
+
+DNS -> Clients
+Clients -> DNS
+
+Auth Service -> Clients
+Clients -> Auth Service
+
+Clients -> WAF -> IGW -> LoadBalancer
+LoadBalancer -> K8S Service
+
+Application Container -> NAT Gateway -> IGW -> Clients
+
+Application Container -> SQL DB [label: "K8s Secret (env) -> DB Connection"]
+SQL DB -> Application Container
+
+Application Container -> Cache [label: "K8s Secret (env) -> Query/Cache Flags"]
+Cache -> Application Container
+
+K8S Service -> ECR Endpoint -> Container Registry [label: "Authenticate & Pull Image"]
+ECR Endpoint -> S3 Gateway Endpoint [label: "Pull Image Layers Securely"]
+
+GHA Role -> Container Registry [label: "Mirror image from GHCR"]
+GHA Role -> K8S Service [label: "Upgrade Helm Release"]
+
+Node Group Role -> Node Policy [label: "Attaches Managed Policies"]
+
+EKS Cluster Role -> K8S Service
+Node Group Role -> K8S Service
+
+EKS Policy -> EKS Cluster Role
+CNI Policy -> Node Group Role
+ECR Policy -> Node Group Role
+
+CI API -> Registry [label: "build + push"]
+Registry -> CD -> K8S Service [label: "Deploy to EKS (API only)"]
+CD -> Notify [label: "Report pipeline status"]
+CI TUI -> Notify [label: "Report pipeline status"]
