@@ -5,6 +5,20 @@
 ## Description
 A Feature Flag service, self hosted or AWS cloud native.
 
+## Currently it supports 
+- RBAC authorization natively
+- TUI client so it can work on servers locally without needing a display env or compositor (and to cut cloud costs)
+- You can only sign from the register endpoint, so you can't create an account from TUI to prevent dummy projects from existing (mostly, you still can use a regular client like **curl** or **postman** to create them like the demo)
+- Every CRUD operation is done throught a **REST** endpoint, the real-time feature is done through a **Websocket** endpoint
+- You can control **rollout percentage** (increase/decrease by only 5% at a time)
+- Flag state is visible depending on time (unchanged for so long or not)
+- Only one admin per project, to prevent collisions
+- Deployable on **AWS Cloud** or locally on an **on-premise** server 
+- Supports **TLS** termination on the api layer (not end-to-end)
+- All data are backed up regularly (configurable)
+
+> **Note:** If you want to fork this project make sure to configure the secrets on your behalf as well
+
 ## Diagrams
 
 ### 1. Kubernetes Diagram 
@@ -27,6 +41,7 @@ You can find the **eraser.io** diagram code here [AWS Cloud Diagram Text](assets
 - Helm v3.19.0
 - minikube v1.38.1 (for local dev)
 - docker v29.6.1 (client + server)  
+- Terraform v1.15.6
 
 ## Used Packages 
 
@@ -107,6 +122,39 @@ control
 ├── go.work.sum
 ├── LICENSE
 ├── README.md
+├── terraform  # Iac
+│   ├── main.tf
+│   ├── modules
+│   │   ├── caching
+│   │   │   ├── main.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   ├── compute
+│   │   │   ├── ecr.tf
+│   │   │   ├── eks.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   ├── data
+│   │   │   ├── main.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   ├── edge
+│   │   │   ├── oidc.tf
+│   │   │   ├── outputs.tf
+│   │   │   ├── variables.tf
+│   │   │   └── waf.tf
+│   │   ├── security
+│   │   │   ├── main.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   └── vpc
+│   │       ├── main.tf
+│   │       ├── outputs.tf
+│   │       └── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   ├── README.md
+│   └── variables.tf
 ├── shared    # Shared module between api and tui
 │   ├── go.mod
 │   └── types.go
@@ -463,3 +511,32 @@ The rest is the same
 | TUI can't reach API             | Verify `--network=host` is used when running TUI container |
 | `invalid authorization format`  | Ensure `Bearer $TOKEN` header is set correctly             |
 | Stale images after code changes | Re-run `go build` and `docker build` steps at top          |
+
+## AWS + Terraform 
+If you want to deploy it on the cloud (only AWS is supported for now), don't forget to configure your profile or use your credentials locally
+```bash 
+nvim ~/.aws/credentials 
+
+# Which should contain 
+# [default]
+# aws_access_key_id = <your-key-id> 
+# aws_secret_access_key = <your-secret>
+```
+
+Then you can 
+```bash 
+# If you changed anything in the tf files, make sure to format them (it's optional but recommended)
+terraform fmt -recursive
+
+# Validate to make sure there are no errors
+terraform validate
+
+# Then proceed with planning
+terraform plan
+
+# If you're ready to deploy, then 
+terraform apply
+```
+
+# Contributions 
+We currently accept contributions, but we don't mind if you fork this repo and build on top of it, so feel free to do so.
