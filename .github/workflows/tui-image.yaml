@@ -11,7 +11,7 @@ on:
       - "shared/**"
       - "go.work"
       - "go.work.sum"
-      - ".github/workflows/tui-image.yml"
+      - ".github/workflows/tui-image.yaml"
   pull_request:
     branches:
       - main

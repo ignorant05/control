@@ -33,3 +33,6 @@ profile.cov
 # Helm 
 *.tgz           
 Charts/
+
+# Terraform 
+terraform/.terraform
