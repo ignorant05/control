@@ -11,7 +11,7 @@ on:
       - "shared/**"
       - "go.work"
       - "go.work.sum"
-      - ".github/workflows/api-image.yml"
+      - ".github/workflows/api-image.yaml"
   pull_request:
     branches:
       - main
