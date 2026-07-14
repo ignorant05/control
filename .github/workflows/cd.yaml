@@ -1,0 +1,94 @@
+name: cd
+
+on:
+  workflow_run:
+    workflows: ["Build and push API image"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: control-cluster
+  ECR_REPOSITORY: control-api
+  NAMESPACE: control-ns
+
+jobs:
+  mirror-to-ecr:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - name: Extract image tag
+        id: image
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Mirror GHCR image to ECR
+        env:
+          GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/control-api:${{ steps.image.outputs.tag }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker pull "$GHCR_IMAGE"
+          docker tag "$GHCR_IMAGE" "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}"
+          docker push "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}"
+
+  deploy:
+    needs: mirror-to-ecr
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: helm upgrade
+        run: |
+          helm upgrade control deploy/helm/control-api \
+            --install \
+            --namespace ${{ env.NAMESPACE }} \
+            --reuse-values \
+            --set api.image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }} \
+            --set api.image.tag=${{ needs.mirror-to-ecr.outputs.tag }} \
+            --wait --timeout 3m
+
+  notify:
+    needs: [deploy]
+    if: always()
+    uses: ./.github/workflows/notify-discord.yml
+    with:
+      status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+      pipeline: "cd"
+    secrets: inherit
