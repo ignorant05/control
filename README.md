@@ -5,7 +5,7 @@
 ## Description
 A Feature Flag service, self hosted or AWS cloud native.
 
-## Currently it supports 
+## Supported Features (for now)
 - RBAC authorization natively
 - TUI client so it can work on servers locally without needing a display env or compositor (and to cut cloud costs)
 - You can only sign from the register endpoint, so you can't create an account from TUI to prevent dummy projects from existing (mostly, you still can use a regular client like **curl** or **postman** to create them like the demo)
@@ -14,7 +14,10 @@ A Feature Flag service, self hosted or AWS cloud native.
 - Flag state is visible depending on time (unchanged for so long or not)
 - Only one admin per project, to prevent collisions
 - Deployable on **AWS Cloud** or locally on an **on-premise** server 
-- Supports **TLS** termination on the api layer (not end-to-end)
+- Supports **TLS** termination on the api layer (not end-to-end at the pod level, since it's on the ingress controller side mainly)
+- Dynamic **auto-scaling** depending on resource usage (local and cloud)
+- Auto image build, push api to **GHCR** and **AWS ECR** via GitHub Actions 
+- The tui is standalone but can be used be used with docker (image is auto built and pushed to **GHCR**) 
 - All data are backed up regularly (configurable)
 
 > **Note:** If you want to fork this project make sure to configure the secrets on your behalf as well
@@ -188,6 +191,7 @@ control
 │       ├── ci.yaml   # Continuous integration workflow file
 │       ├── api-image.yaml # Build and push to GHCR 
 │       ├── tui-image.yaml # Build and push to GHCR 
+│       ├── cd.yaml  # Continuous deployment workflow file 
 │       └── discord-notify.yaml 
 └── .gitignore
 ```
