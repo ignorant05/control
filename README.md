@@ -19,6 +19,7 @@ A Feature Flag service, self hosted or AWS cloud native.
 - Auto image build, push api to **GHCR** and **AWS ECR** via GitHub Actions 
 - The tui is standalone but can be used be used with docker (image is auto built and pushed to **GHCR**) 
 - All data are backed up regularly (configurable)
+- **Discord** notification report on workflow status (success/failure)
 
 > **Note:** If you want to fork this project make sure to configure the secrets on your behalf as well
 
