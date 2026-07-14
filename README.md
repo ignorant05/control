@@ -228,6 +228,7 @@ minikube image load control-api:latest
 ```
 
 ### 3. Self-Signed TLS Certificate (for dev only)
+
 ```bash
 openssl req -x509 -newkey rsa:2048 -nodes -keyout tls.key -out tls.crt -days 365 -subj "/CN=control.local" -addext "subjectAltName=DNS:control.local"
 
@@ -252,6 +253,9 @@ helm install traefik traefik/traefik
 
 ```bash
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=traefik --timeout=90s
+
+# Then load the image into minikube
+minikube image load traefik:v3.7.6
 ```
 
 ### 7. Create Secrets
@@ -310,7 +314,6 @@ echo "Admin: $ADMIN_USER"
 echo "Password: $ADMIN_PASS"
 
 # 3. Login
-
 TOKEN=$(curl -s "http://$(minikube ip):32405/api/v1/login" \
   -H "Content-Type: application/json" \
   -d "{\"username\":\"$ADMIN_USER\",\"password\":\"$ADMIN_PASS\"}" | jq -r '.token')
