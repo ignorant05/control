@@ -202,9 +202,9 @@ control
 
 ```bash
 # Build specific modules
-go build ./api/cmd
-go build ./tui/cmd
-go build ./...          # for shared packages
+cd api && go build ./api/cmd
+cd tui && go build ./tui/cmd
+cd shared && go build ./...          
 
 # Rebuild Docker images
 docker build -f api/Dockerfile -t control-api:latest . --network=host
@@ -300,9 +300,9 @@ minikube service control-control-api --url
 ```bash
 # 1. Register app
 # Check the port here, use the same port & IP in the 9th step
-RESPONSE=$(curl -s "http://$(minikube ip):32405/api/v1/register-app" \
+RESPONSE=$(curl -s "http://$(minikube ip):<user-the-dedicated-port-in-9>/api/v1/register-app" \
   -H "Content-Type: application/json" \
-  -d '{"app_name":"Testing"}' | jq .)
+  -d '{"app_name":"<your-project-name>"}' | jq .)
 
 echo "$RESPONSE" | jq .
 
@@ -314,7 +314,7 @@ echo "Admin: $ADMIN_USER"
 echo "Password: $ADMIN_PASS"
 
 # 3. Login
-TOKEN=$(curl -s "http://$(minikube ip):32405/api/v1/login" \
+TOKEN=$(curl -s "http://$(minikube ip):<user-the-dedicated-port-in-9>/api/v1/login" \
   -H "Content-Type: application/json" \
   -d "{\"username\":\"$ADMIN_USER\",\"password\":\"$ADMIN_PASS\"}" | jq -r '.token')
 
@@ -322,7 +322,7 @@ echo "Token: $TOKEN"
 
 # 4. Create flag
 # <initial rollout percentage> value must not be inside quotes
-curl -s "http://$(minikube ip):32405/api/v1/flag/create" \
+curl -s "http://$(minikube ip):<user-the-dedicated-port-in-9>/api/v1/flag/create" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"<flag-name>","description":"<flag description>","status":"< "OFF" or "ON" >,"rollout":<initial rollout percentage>}' | jq .
